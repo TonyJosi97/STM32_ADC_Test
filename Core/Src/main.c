@@ -65,14 +65,27 @@ static void MX_ADC1_Init(void);
 /* USER CODE BEGIN 0 */
 #define DATA_BUFFER_SIZE			2205
 #define DATA_BUFFER_SAMPLE_SIZE		(DATA_BUFFER_SIZE * 2)
-uint32_t data_buffer[DATA_BUFFER_SIZE];
+
+uint32_t data_buffer_1[DATA_BUFFER_SIZE], data_buffer_2[DATA_BUFFER_SIZE];
 uint32_t ADC_Val, ADC_Val_Sum, ADC_Val_Sum_Count;
+uint8_t cur_Buffer = 0;
+
 char data_Buff[50];
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
 
   ++ADC_Val_Sum_Count;
-  HAL_ADC_Start_DMA(&hadc1, data_buffer, DATA_BUFFER_SAMPLE_SIZE);
+
+  uint32_t *temp_dBuffer;
+  if(cur_Buffer == 0) {
+	  temp_dBuffer = data_buffer_2;
+	  cur_Buffer = 1;
+  }
+  else {
+	  temp_dBuffer = data_buffer_1;
+	  cur_Buffer = 0;
+  }
+  HAL_ADC_Start_DMA(&hadc1, temp_dBuffer, DATA_BUFFER_SAMPLE_SIZE);
 
   //HAL_ADC_Start_DMA(&hadc1, data_buffer, DATA_BUFFER_SIZE);
 
@@ -113,7 +126,7 @@ int main(void)
   MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
   uint32_t prev_TS = HAL_GetTick();
-  HAL_ADC_Start_DMA(&hadc1, data_buffer, DATA_BUFFER_SAMPLE_SIZE);
+  HAL_ADC_Start_DMA(&hadc1, data_buffer_1, DATA_BUFFER_SAMPLE_SIZE);
 
   /* USER CODE END 2 */
 
@@ -123,7 +136,7 @@ int main(void)
   {
 	  if(ADC_Val_Sum_Count >= 10) {
 	    ++ADC_Val_Sum;
-	    sprintf(data_Buff, "DATA FULL %" PRIu32  " %d %d %" PRIu32 "\n", ADC_Val_Sum, ((uint16_t *)data_buffer)[4408], ((uint16_t *)data_buffer)[4409], HAL_GetTick() - prev_TS);
+	    sprintf(data_Buff, "DATA FULL %" PRIu32  " %d %d %" PRIu32 "\n", ADC_Val_Sum, ((uint16_t *)data_buffer_1)[4408], ((uint16_t *)data_buffer_1)[4409], HAL_GetTick() - prev_TS);
 	    prev_TS = HAL_GetTick();
 	    ADC_Val_Sum_Count = 0;
 	    HAL_UART_Transmit(&huart2, (uint8_t *) data_Buff, sizeof(data_Buff), 100);
