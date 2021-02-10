@@ -70,14 +70,23 @@ static void MX_SPI1_Init(void);
 #define DATA_BUFFER_SIZE			2205
 #define DATA_BUFFER_SAMPLE_SIZE		(DATA_BUFFER_SIZE * 2)
 #define SPI_NO_OF_BYTES_TO_TX		(DATA_BUFFER_SAMPLE_SIZE * 2)
+#define ADC_SPI_COMM_SYNC_TIMEOUT	10
 
 uint32_t data_buffer_0[DATA_BUFFER_SIZE], data_buffer_1[DATA_BUFFER_SIZE];
 uint32_t ADC_Val, ADC_Val_Sum, ADC_Val_Sum_Count;
-uint8_t cur_ADC_DMA_Buffer = 0, spi_TX_Cmplt = 1;
+volatile uint8_t cur_ADC_DMA_Buffer = 0, spi_TX_Cmplt = 1;
 
 char data_Buff[50];
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
+
+	/*
+	uint8_t timeout_Itr = 0;
+	while(!spi_TX_Cmplt && timeout_Itr < ADC_SPI_COMM_SYNC_TIMEOUT) {
+		++timeout_Itr;
+		HAL_Delay(1);
+	}
+	*/
 
   ++ADC_Val_Sum_Count;
 
@@ -97,7 +106,9 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
 
 }
 
+uint32_t spi_TX_Cnt;
 void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi) {
+	++spi_TX_Cnt;
 	spi_TX_Cmplt = 1;
 }
 
@@ -146,7 +157,7 @@ int main(void)
   uint8_t *temp_spi_Buffer;
   while (1)
   {
-
+	  /* Send data via SPI */
 	  if(ADC_Val_Sum_Count > 0 && spi_TX_Cmplt == 1) {
 		  if(cur_ADC_DMA_Buffer == 0) {
 			  temp_spi_Buffer = (uint8_t *) data_buffer_1;
@@ -157,14 +168,17 @@ int main(void)
 		  spi_TX_Cmplt = 0;
 	  }
 
-
+	  /* For debug logging */
 	  if(ADC_Val_Sum_Count >= 10) {
 	    ++ADC_Val_Sum;
-	    sprintf(data_Buff, "DATA FULL %" PRIu32  " %d %d %" PRIu32 "\n", ADC_Val_Sum, ((uint16_t *)data_buffer_1)[4408], ((uint16_t *)data_buffer_0)[4409], HAL_GetTick() - prev_TS);
+	    sprintf(data_Buff, "DATA FULL %" PRIu32  " %d %d %" PRIu32 " %" PRIu32 "\n", ADC_Val_Sum, ((uint16_t *)data_buffer_1)[4408], \
+	    		((uint16_t *)data_buffer_0)[4409], HAL_GetTick() - prev_TS, spi_TX_Cnt);
 	    prev_TS = HAL_GetTick();
 	    ADC_Val_Sum_Count = 0;
+	    spi_TX_Cnt = 0;
 	    HAL_UART_Transmit(&huart2, (uint8_t *) data_Buff, sizeof(data_Buff), 100);
 	  }
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
