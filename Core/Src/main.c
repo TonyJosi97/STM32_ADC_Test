@@ -45,6 +45,9 @@
 ADC_HandleTypeDef hadc1;
 DMA_HandleTypeDef hdma_adc1;
 
+SPI_HandleTypeDef hspi1;
+DMA_HandleTypeDef hdma_spi1_tx;
+
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
@@ -57,6 +60,7 @@ static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_ADC1_Init(void);
+static void MX_SPI1_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -65,10 +69,11 @@ static void MX_ADC1_Init(void);
 /* USER CODE BEGIN 0 */
 #define DATA_BUFFER_SIZE			2205
 #define DATA_BUFFER_SAMPLE_SIZE		(DATA_BUFFER_SIZE * 2)
+#define SPI_NO_OF_BYTES_TO_TX		(DATA_BUFFER_SAMPLE_SIZE * 2)
 
-uint32_t data_buffer_1[DATA_BUFFER_SIZE], data_buffer_2[DATA_BUFFER_SIZE];
+uint32_t data_buffer_0[DATA_BUFFER_SIZE], data_buffer_1[DATA_BUFFER_SIZE];
 uint32_t ADC_Val, ADC_Val_Sum, ADC_Val_Sum_Count;
-uint8_t cur_Buffer = 0;
+uint8_t cur_ADC_DMA_Buffer = 0, spi_TX_Cmplt = 1;
 
 char data_Buff[50];
 
@@ -77,18 +82,23 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
   ++ADC_Val_Sum_Count;
 
   uint32_t *temp_dBuffer;
-  if(cur_Buffer == 0) {
-	  temp_dBuffer = data_buffer_2;
-	  cur_Buffer = 1;
+  if(cur_ADC_DMA_Buffer == 0) {
+	  temp_dBuffer = data_buffer_1;
+	  cur_ADC_DMA_Buffer = 1;
   }
   else {
-	  temp_dBuffer = data_buffer_1;
-	  cur_Buffer = 0;
+	  temp_dBuffer = data_buffer_0;
+	  cur_ADC_DMA_Buffer = 0;
   }
+  HAL_ADC_Stop_DMA(&hadc1);
   HAL_ADC_Start_DMA(&hadc1, temp_dBuffer, DATA_BUFFER_SAMPLE_SIZE);
 
   //HAL_ADC_Start_DMA(&hadc1, data_buffer, DATA_BUFFER_SIZE);
 
+}
+
+void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi) {
+	spi_TX_Cmplt = 1;
 }
 
 /* USER CODE END 0 */
@@ -124,19 +134,33 @@ int main(void)
   MX_DMA_Init();
   MX_USART2_UART_Init();
   MX_ADC1_Init();
+  MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
   uint32_t prev_TS = HAL_GetTick();
-  HAL_ADC_Start_DMA(&hadc1, data_buffer_1, DATA_BUFFER_SAMPLE_SIZE);
+  HAL_ADC_Start_DMA(&hadc1, data_buffer_0, DATA_BUFFER_SAMPLE_SIZE);
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  uint8_t *temp_spi_Buffer;
   while (1)
   {
+	  /*
+	  if(ADC_Val_Sum_Count > 0 && spi_TX_Cmplt == 1) {
+		  if(cur_ADC_DMA_Buffer == 0) {
+			  temp_spi_Buffer = (uint8_t *) data_buffer_1;
+		  } else {
+			  temp_spi_Buffer = (uint8_t *) data_buffer_0;
+		  }
+		  HAL_SPI_Transmit_DMA(&hspi1, temp_spi_Buffer, SPI_NO_OF_BYTES_TO_TX);
+		  spi_TX_Cmplt = 0;
+	  }
+	  */
+
 	  if(ADC_Val_Sum_Count >= 10) {
 	    ++ADC_Val_Sum;
-	    sprintf(data_Buff, "DATA FULL %" PRIu32  " %d %d %" PRIu32 "\n", ADC_Val_Sum, ((uint16_t *)data_buffer_1)[4408], ((uint16_t *)data_buffer_1)[4409], HAL_GetTick() - prev_TS);
+	    sprintf(data_Buff, "DATA FULL %" PRIu32  " %d %d %" PRIu32 "\n", ADC_Val_Sum, ((uint16_t *)data_buffer_1)[4408], ((uint16_t *)data_buffer_0)[4409], HAL_GetTick() - prev_TS);
 	    prev_TS = HAL_GetTick();
 	    ADC_Val_Sum_Count = 0;
 	    HAL_UART_Transmit(&huart2, (uint8_t *) data_Buff, sizeof(data_Buff), 100);
@@ -254,6 +278,46 @@ static void MX_ADC1_Init(void)
 }
 
 /**
+  * @brief SPI1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_SPI1_Init(void)
+{
+
+  /* USER CODE BEGIN SPI1_Init 0 */
+
+  /* USER CODE END SPI1_Init 0 */
+
+  /* USER CODE BEGIN SPI1_Init 1 */
+
+  /* USER CODE END SPI1_Init 1 */
+  /* SPI1 parameter configuration*/
+  hspi1.Instance = SPI1;
+  hspi1.Init.Mode = SPI_MODE_MASTER;
+  hspi1.Init.Direction = SPI_DIRECTION_2LINES;
+  hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
+  hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
+  hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
+  hspi1.Init.NSS = SPI_NSS_SOFT;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_16;
+  hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
+  hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
+  hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+  hspi1.Init.CRCPolynomial = 7;
+  hspi1.Init.CRCLength = SPI_CRC_LENGTH_DATASIZE;
+  hspi1.Init.NSSPMode = SPI_NSS_PULSE_ENABLE;
+  if (HAL_SPI_Init(&hspi1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN SPI1_Init 2 */
+
+  /* USER CODE END SPI1_Init 2 */
+
+}
+
+/**
   * @brief USART2 Initialization Function
   * @param None
   * @retval None
@@ -314,6 +378,9 @@ static void MX_DMA_Init(void)
   /* DMA1_Channel1_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
+  /* DMA1_Channel2_3_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel2_3_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel2_3_IRQn);
 
 }
 
