@@ -146,7 +146,7 @@ int main(void)
   uint8_t *temp_spi_Buffer;
   while (1)
   {
-	  /*
+
 	  if(ADC_Val_Sum_Count > 0 && spi_TX_Cmplt == 1) {
 		  if(cur_ADC_DMA_Buffer == 0) {
 			  temp_spi_Buffer = (uint8_t *) data_buffer_1;
@@ -156,7 +156,7 @@ int main(void)
 		  HAL_SPI_Transmit_DMA(&hspi1, temp_spi_Buffer, SPI_NO_OF_BYTES_TO_TX);
 		  spi_TX_Cmplt = 0;
 	  }
-	  */
+
 
 	  if(ADC_Val_Sum_Count >= 10) {
 	    ++ADC_Val_Sum;
