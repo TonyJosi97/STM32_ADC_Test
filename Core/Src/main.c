@@ -72,6 +72,7 @@ char data_Buff[50];
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
 
   ++ADC_Val_Sum_Count;
+  HAL_ADC_Start_DMA(&hadc1, data_buffer, DATA_BUFFER_SAMPLE_SIZE);
 
   //HAL_ADC_Start_DMA(&hadc1, data_buffer, DATA_BUFFER_SIZE);
 
@@ -214,7 +215,7 @@ static void MX_ADC1_Init(void)
   hadc1.Init.DiscontinuousConvMode = DISABLE;
   hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
   hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
-  hadc1.Init.DMAContinuousRequests = ENABLE;
+  hadc1.Init.DMAContinuousRequests = DISABLE;
   hadc1.Init.Overrun = ADC_OVR_DATA_PRESERVED;
   hadc1.Init.SamplingTimeCommon1 = ADC_SAMPLETIME_79CYCLES_5;
   hadc1.Init.SamplingTimeCommon2 = ADC_SAMPLETIME_1CYCLE_5;
