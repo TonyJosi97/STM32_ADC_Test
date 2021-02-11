@@ -25,6 +25,7 @@
 
 #include <stdio.h>
 #include <inttypes.h>
+#include <string.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -72,7 +73,7 @@ static void MX_SPI1_Init(void);
 #define SPI_NO_OF_BYTES_TO_TX		(DATA_BUFFER_SAMPLE_SIZE * 2)
 #define ADC_SPI_COMM_SYNC_TIMEOUT	10
 
-uint32_t data_buffer_0[DATA_BUFFER_SIZE], data_buffer_1[DATA_BUFFER_SIZE];
+uint32_t data_buffer_0[DATA_BUFFER_SIZE], data_buffer_1[DATA_BUFFER_SIZE], spi_Test_buffer[DATA_BUFFER_SIZE];
 uint32_t ADC_Val, ADC_Val_Sum;
 volatile uint8_t cur_ADC_DMA_Buffer = 0, spi_TX_Cmplt = 1;
 int ADC_Val_Sum_Count = -1, total_ADC_Conv;
@@ -149,6 +150,7 @@ int main(void)
   MX_ADC1_Init();
   MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
+  memset(spi_Test_buffer, 3, DATA_BUFFER_SIZE * 4);
   uint32_t prev_TS = HAL_GetTick();
   HAL_ADC_Start_DMA(&hadc1, data_buffer_0, DATA_BUFFER_SAMPLE_SIZE);
 
@@ -170,6 +172,7 @@ int main(void)
 		  --total_ADC_Conv;
 		  ++spi_Sent_Cnt;
 		  HAL_SPI_DMAStop(&hspi1);
+		  temp_spi_Buffer = spi_Test_buffer;
 		  HAL_SPI_Transmit_DMA(&hspi1, temp_spi_Buffer, SPI_NO_OF_BYTES_TO_TX);
 		  spi_TX_Cmplt = 0;
 	  }
