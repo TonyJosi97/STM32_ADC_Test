@@ -68,12 +68,13 @@ static void MX_SPI1_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-#define DATA_BUFFER_SIZE			2205
+#define DATA_BUFFER_SIZE			625
 #define DATA_BUFFER_SAMPLE_SIZE		(DATA_BUFFER_SIZE * 2)
 #define SPI_NO_OF_BYTES_TO_TX		(DATA_BUFFER_SAMPLE_SIZE * 2)
 #define ADC_SPI_COMM_SYNC_TIMEOUT	10
 
-uint32_t data_buffer_0[DATA_BUFFER_SIZE], data_buffer_1[DATA_BUFFER_SIZE], spi_Test_buffer[DATA_BUFFER_SIZE];
+uint32_t data_buffer_0[DATA_BUFFER_SIZE], data_buffer_1[DATA_BUFFER_SIZE];
+uint32_t spi_Test_buffer[DATA_BUFFER_SIZE];
 uint32_t ADC_Val, ADC_Val_Sum;
 volatile uint8_t cur_ADC_DMA_Buffer = 0, spi_TX_Cmplt = 1;
 int ADC_Val_Sum_Count = -1, total_ADC_Conv;
@@ -150,7 +151,7 @@ int main(void)
   MX_ADC1_Init();
   MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
-  memset(spi_Test_buffer, 3, DATA_BUFFER_SIZE * 4);
+  memset(spi_Test_buffer, 10, DATA_BUFFER_SIZE * 4);
   uint32_t prev_TS = HAL_GetTick();
   HAL_ADC_Start_DMA(&hadc1, data_buffer_0, DATA_BUFFER_SAMPLE_SIZE);
 
@@ -172,16 +173,16 @@ int main(void)
 		  --total_ADC_Conv;
 		  ++spi_Sent_Cnt;
 		  HAL_SPI_DMAStop(&hspi1);
-		  temp_spi_Buffer = spi_Test_buffer;
+		  //temp_spi_Buffer = (uint8_t *)spi_Test_buffer;
 		  HAL_SPI_Transmit_DMA(&hspi1, temp_spi_Buffer, SPI_NO_OF_BYTES_TO_TX);
 		  spi_TX_Cmplt = 0;
 	  }
 
 	  /* For debug logging */
-	  if(ADC_Val_Sum_Count >= 9) {
+	  if(ADC_Val_Sum_Count >= 31) {
 	    ++ADC_Val_Sum;
-	    sprintf(data_Buff, "DATA FULL %" PRIu32  " %d %d %" PRIu32 " %" PRIu32 "\n", ADC_Val_Sum, ((uint16_t *)data_buffer_1)[4408], \
-	    		((uint16_t *)data_buffer_0)[4409], HAL_GetTick() - prev_TS, spi_Sent_Cnt);
+	    sprintf(data_Buff, "DATA FULL %" PRIu32  " %d %d %" PRIu32 " %" PRIu32 "\n", ADC_Val_Sum, ((uint16_t *)data_buffer_1)[1248], \
+	    		((uint16_t *)data_buffer_0)[1249], HAL_GetTick() - prev_TS, spi_Sent_Cnt);
 	    prev_TS = HAL_GetTick();
 	    ADC_Val_Sum_Count = -1;
 	    spi_TX_Cnt = 0;
@@ -318,19 +319,18 @@ static void MX_SPI1_Init(void)
   /* USER CODE END SPI1_Init 1 */
   /* SPI1 parameter configuration*/
   hspi1.Instance = SPI1;
-  hspi1.Init.Mode = SPI_MODE_MASTER;
+  hspi1.Init.Mode = SPI_MODE_SLAVE;
   hspi1.Init.Direction = SPI_DIRECTION_2LINES;
   hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
   hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_16;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
   hspi1.Init.CRCPolynomial = 7;
   hspi1.Init.CRCLength = SPI_CRC_LENGTH_DATASIZE;
-  hspi1.Init.NSSPMode = SPI_NSS_PULSE_ENABLE;
+  hspi1.Init.NSSPMode = SPI_NSS_PULSE_DISABLE;
   if (HAL_SPI_Init(&hspi1) != HAL_OK)
   {
     Error_Handler();
