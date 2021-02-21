@@ -72,14 +72,18 @@ static void MX_SPI1_Init(void);
 #define DATA_BUFFER_SAMPLE_SIZE		(DATA_BUFFER_SIZE * 2)
 #define SPI_NO_OF_BYTES_TO_TX		(DATA_BUFFER_SAMPLE_SIZE * 2)
 #define ADC_SPI_COMM_SYNC_TIMEOUT	10
+#define SPI_ACK_SIZE				4
 
 uint32_t data_buffer_0[DATA_BUFFER_SIZE], data_buffer_1[DATA_BUFFER_SIZE];
 uint32_t spi_Test_buffer[DATA_BUFFER_SIZE];
 uint32_t ADC_Val, ADC_Val_Sum;
 volatile uint8_t cur_ADC_DMA_Buffer = 0, spi_TX_Cmplt = 1;
 int ADC_Val_Sum_Count = -1, total_ADC_Conv;
+uint8_t spi_MasterACK = 1, spi_MasterACK_Buf[5];
 
 char data_Buff[50];
+
+uint8_t spi_Test_Buf[SPI_NO_OF_BYTES_TO_TX];
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
 
@@ -113,7 +117,12 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
 uint32_t spi_TX_Cnt;
 void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi) {
 	++spi_TX_Cnt;
-	spi_TX_Cmplt = 1;
+	// if(spi_TX_Cnt % 32 == 0)
+		spi_TX_Cmplt = 1;
+}
+
+void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi) {
+	spi_MasterACK = 1;
 }
 
 /* USER CODE END 0 */
@@ -154,6 +163,11 @@ int main(void)
   memset(spi_Test_buffer, 10, DATA_BUFFER_SIZE * 4);
   uint32_t prev_TS = HAL_GetTick();
   HAL_ADC_Start_DMA(&hadc1, data_buffer_0, DATA_BUFFER_SAMPLE_SIZE);
+  HAL_SPI_Receive_DMA(&hspi1, spi_MasterACK_Buf, SPI_ACK_SIZE);
+
+  for(int ii = 0; ii < SPI_NO_OF_BYTES_TO_TX; ++ii)
+	  if(ii % 2 == 0)
+		  spi_Test_Buf[ii] = 52;
 
   /* USER CODE END 2 */
 
@@ -164,7 +178,7 @@ int main(void)
   while (1)
   {
 	  /* Send data via SPI */
-	  if(ADC_Val_Sum_Count >= 0 && spi_TX_Cmplt == 1 && total_ADC_Conv > 0) {
+	  if(ADC_Val_Sum_Count >= 0 && spi_TX_Cmplt == 1 && total_ADC_Conv > 0 && spi_MasterACK == 1) {
 		  if(cur_ADC_DMA_Buffer == 0) {
 			  temp_spi_Buffer = (uint8_t *) data_buffer_1;
 		  } else {
@@ -174,15 +188,19 @@ int main(void)
 		  ++spi_Sent_Cnt;
 		  HAL_SPI_DMAStop(&hspi1);
 		  //temp_spi_Buffer = (uint8_t *)spi_Test_buffer;
-		  HAL_SPI_Transmit_DMA(&hspi1, temp_spi_Buffer, SPI_NO_OF_BYTES_TO_TX);
+		  //HAL_SPI_Transmit_DMA(&hspi1, temp_spi_Buffer, SPI_NO_OF_BYTES_TO_TX);
+		  HAL_SPI_Transmit_DMA(&hspi1, spi_Test_Buf, SPI_NO_OF_BYTES_TO_TX);
+		  HAL_SPI_Receive_DMA(&hspi1, spi_MasterACK_Buf, SPI_ACK_SIZE);
 		  spi_TX_Cmplt = 0;
+		  spi_MasterACK = 0;
+		  HAL_Delay(100);
 	  }
 
 	  /* For debug logging */
 	  if(ADC_Val_Sum_Count >= 31) {
 	    ++ADC_Val_Sum;
-	    sprintf(data_Buff, "DATA FULL %" PRIu32  " %d %d %" PRIu32 " %" PRIu32 "\n", ADC_Val_Sum, ((uint16_t *)data_buffer_1)[1248], \
-	    		((uint16_t *)data_buffer_0)[1249], HAL_GetTick() - prev_TS, spi_Sent_Cnt);
+	    sprintf(data_Buff, "DATA FULL %" PRIu32  " %d %d %" PRIu32 " %" PRIu32 " SPI ACK %X \n", ADC_Val_Sum, ((uint16_t *)data_buffer_1)[1248], \
+	    		((uint16_t *)data_buffer_0)[1249], HAL_GetTick() - prev_TS, spi_Sent_Cnt, spi_MasterACK);
 	    prev_TS = HAL_GetTick();
 	    ADC_Val_Sum_Count = -1;
 	    spi_TX_Cnt = 0;
@@ -266,7 +284,7 @@ static void MX_ADC1_Init(void)
   */
   hadc1.Instance = ADC1;
   hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
-  hadc1.Init.Resolution = ADC_RESOLUTION_12B;
+  hadc1.Init.Resolution = ADC_RESOLUTION_8B;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
   hadc1.Init.ScanConvMode = ADC_SCAN_DISABLE;
   hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
