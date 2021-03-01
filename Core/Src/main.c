@@ -113,6 +113,30 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
 
 }
 
+void HAL_GPIO_EXTI_Rising_Callback(uint16_t GPIO_Pin) {
+
+	if(spi_TX_Cmplt) {
+	  uint32_t *temp_dBuffer;
+	  if(cur_ADC_DMA_Buffer == 0) {
+		  temp_dBuffer = data_buffer_0;
+	  }
+	  else {
+		  temp_dBuffer = data_buffer_1;
+	  }
+
+	  HAL_SPI_Transmit_DMA(&hspi1, (uint8_t *) temp_dBuffer, DATA_BUFFER_SIZE * 4);
+	  spi_TX_Cmplt = 0;
+
+	}
+
+}
+
+void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi) {
+
+	spi_TX_Cmplt = 1;
+
+}
+
 /* USER CODE END 0 */
 
 /**
