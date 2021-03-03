@@ -203,6 +203,7 @@ int main(void)
 	    ++ADC_Val_Sum;
 	    sprintf(data_Buff, "DATA FULL %" PRIu32  " %d %d %" PRIu32 "\n", ADC_Val_Sum, ((uint16_t *)data_buffer_1)[1248], \
 	    		((uint16_t *)data_buffer_0)[1249], HAL_GetTick() - prev_TS);
+	    HAL_UART_Transmit(&huart2, (uint8_t *) data_Buff, 50, 100);
 	    prev_TS = HAL_GetTick();
 	    ADC_Val_Sum_Count = -1;
 
