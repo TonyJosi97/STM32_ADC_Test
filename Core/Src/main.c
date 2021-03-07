@@ -71,12 +71,15 @@ static void MX_ADC1_Init(void);
 #define SPI_ACK_SIZE				4
 
 
-uint32_t data_buffer_0[DATA_BUFFER_SIZE], data_buffer_1[DATA_BUFFER_SIZE];
+uint32_t data_buffer_0[DATA_BUFFER_SIZE + 1], data_buffer_1[DATA_BUFFER_SIZE + 1];
 uint32_t ADC_Val, ADC_Val_Sum;
 volatile uint8_t cur_ADC_DMA_Buffer = 0;
 int ADC_Val_Sum_Count = -1, total_ADC_Conv;
 char data_Buff[50];
 uint8_t *temp_uart_Buffer;
+uint8_t uart_TX_Cmplt = 1;
+
+
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
 
@@ -105,6 +108,10 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
 
   //HAL_ADC_Start_DMA(&hadc1, data_buffer, DATA_BUFFER_SIZE);
 
+}
+
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
+	uart_TX_Cmplt = 1;
 }
 
 
@@ -147,23 +154,31 @@ int main(void)
   HAL_ADC_Start_DMA(&hadc1, data_buffer_0, DATA_BUFFER_SAMPLE_SIZE);
   //HAL_SPI_Receive_DMA(&hspi1, spi_MasterACK_Buf, SPI_ACK_SIZE);
 
-
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
+  ((uint8_t *) data_buffer_0)[DATA_BUFFER_SIZE * 4 + 2] = '\n';
+  ((uint8_t *) data_buffer_0)[DATA_BUFFER_SIZE * 4 + 3] = '\r';
+  ((uint8_t *) data_buffer_1)[DATA_BUFFER_SIZE * 4 + 2] = '\n';
+  ((uint8_t *) data_buffer_1)[DATA_BUFFER_SIZE * 4 + 3] = '\r';
+
   uint32_t spi_Sent_Cnt = 0;
   while (1)
   {
 	  /* Send data via SPI */
-	  if(ADC_Val_Sum_Count >= 0 && total_ADC_Conv > 0) {
+	  if(ADC_Val_Sum_Count >= 0 && total_ADC_Conv > 0 && uart_TX_Cmplt == 1) {
 		  if(cur_ADC_DMA_Buffer == 0) {
 			  temp_uart_Buffer = (uint8_t *) data_buffer_1;
 		  } else {
 			  temp_uart_Buffer = (uint8_t *) data_buffer_0;
 		  }
 		  --total_ADC_Conv;
+
+		  uart_TX_Cmplt = 0;
+		  HAL_UART_Transmit_IT(&huart2, temp_uart_Buffer, (DATA_BUFFER_SIZE + 1) * 4);
+
 	  }
 
 	  /* For debug logging */
