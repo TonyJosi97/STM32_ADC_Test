@@ -76,7 +76,7 @@ uint32_t ADC_Val, ADC_Val_Sum;
 volatile uint8_t cur_ADC_DMA_Buffer = 0;
 int ADC_Val_Sum_Count = -1, total_ADC_Conv;
 char data_Buff[50];
-
+uint8_t *temp_uart_Buffer;
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
 
@@ -159,14 +159,15 @@ int main(void)
 	  /* Send data via SPI */
 	  if(ADC_Val_Sum_Count >= 0 && total_ADC_Conv > 0) {
 		  if(cur_ADC_DMA_Buffer == 0) {
-			  temp_spi_Buffer = (uint8_t *) data_buffer_1;
+			  temp_uart_Buffer = (uint8_t *) data_buffer_1;
 		  } else {
-			  temp_spi_Buffer = (uint8_t *) data_buffer_0;
+			  temp_uart_Buffer = (uint8_t *) data_buffer_0;
 		  }
 		  --total_ADC_Conv;
 	  }
 
 	  /* For debug logging */
+	  /*
 	  if(ADC_Val_Sum_Count >= 31) {
 	    ++ADC_Val_Sum;
 	    sprintf(data_Buff, "DATA FULL %" PRIu32  " %d %d %" PRIu32 "\n", ADC_Val_Sum, ((uint16_t *)data_buffer_1)[1248], \
@@ -176,6 +177,7 @@ int main(void)
 	    ADC_Val_Sum_Count = -1;
 
 	  }
+	  */
 
     /* USER CODE END WHILE */
 
