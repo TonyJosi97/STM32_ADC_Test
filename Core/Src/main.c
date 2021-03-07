@@ -46,8 +46,6 @@
 ADC_HandleTypeDef hadc1;
 DMA_HandleTypeDef hdma_adc1;
 
-SPI_HandleTypeDef hspi1;
-
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
@@ -60,7 +58,6 @@ static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_ADC1_Init(void);
-static void MX_SPI1_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -73,16 +70,13 @@ static void MX_SPI1_Init(void);
 #define ADC_SPI_COMM_SYNC_TIMEOUT	10
 #define SPI_ACK_SIZE				4
 
+
 uint32_t data_buffer_0[DATA_BUFFER_SIZE], data_buffer_1[DATA_BUFFER_SIZE];
-uint32_t spi_Test_buffer[DATA_BUFFER_SIZE];
 uint32_t ADC_Val, ADC_Val_Sum;
-volatile uint8_t cur_ADC_DMA_Buffer = 0, spi_TX_Cmplt = 1;
+volatile uint8_t cur_ADC_DMA_Buffer = 0;
 int ADC_Val_Sum_Count = -1, total_ADC_Conv;
-//uint8_t spi_MasterACK = 1, spi_MasterACK_Buf[5];
-uint8_t *temp_spi_Buffer;
 char data_Buff[50];
 
-uint8_t spi_Test_Buf[SPI_NO_OF_BYTES_TO_TX];
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
 
@@ -113,29 +107,6 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
 
 }
 
-void HAL_GPIO_EXTI_Rising_Callback(uint16_t GPIO_Pin) {
-
-	if(spi_TX_Cmplt) {
-	  uint32_t *temp_dBuffer;
-	  if(cur_ADC_DMA_Buffer == 0) {
-		  temp_dBuffer = data_buffer_0;
-	  }
-	  else {
-		  temp_dBuffer = data_buffer_1;
-	  }
-
-	  HAL_SPI_Transmit_DMA(&hspi1, (uint8_t *) temp_dBuffer, DATA_BUFFER_SIZE * 4);
-	  spi_TX_Cmplt = 0;
-
-	}
-
-}
-
-void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi) {
-
-	spi_TX_Cmplt = 1;
-
-}
 
 /* USER CODE END 0 */
 
@@ -170,15 +141,12 @@ int main(void)
   MX_DMA_Init();
   MX_USART2_UART_Init();
   MX_ADC1_Init();
-  MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
-  memset(spi_Test_buffer, 10, DATA_BUFFER_SIZE * 4);
+
   uint32_t prev_TS = HAL_GetTick();
   HAL_ADC_Start_DMA(&hadc1, data_buffer_0, DATA_BUFFER_SAMPLE_SIZE);
   //HAL_SPI_Receive_DMA(&hspi1, spi_MasterACK_Buf, SPI_ACK_SIZE);
 
-  for(int ii = 0; ii < SPI_NO_OF_BYTES_TO_TX; ++ii)
-    spi_Test_Buf[ii] = 52;
 
   /* USER CODE END 2 */
 
@@ -322,45 +290,6 @@ static void MX_ADC1_Init(void)
 }
 
 /**
-  * @brief SPI1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_SPI1_Init(void)
-{
-
-  /* USER CODE BEGIN SPI1_Init 0 */
-
-  /* USER CODE END SPI1_Init 0 */
-
-  /* USER CODE BEGIN SPI1_Init 1 */
-
-  /* USER CODE END SPI1_Init 1 */
-  /* SPI1 parameter configuration*/
-  hspi1.Instance = SPI1;
-  hspi1.Init.Mode = SPI_MODE_SLAVE;
-  hspi1.Init.Direction = SPI_DIRECTION_2LINES;
-  hspi1.Init.DataSize = SPI_DATASIZE_4BIT;
-  hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
-  hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
-  hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
-  hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
-  hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
-  hspi1.Init.CRCPolynomial = 7;
-  hspi1.Init.CRCLength = SPI_CRC_LENGTH_DATASIZE;
-  hspi1.Init.NSSPMode = SPI_NSS_PULSE_DISABLE;
-  if (HAL_SPI_Init(&hspi1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN SPI1_Init 2 */
-
-  /* USER CODE END SPI1_Init 2 */
-
-}
-
-/**
   * @brief USART2 Initialization Function
   * @param None
   * @retval None
@@ -376,7 +305,7 @@ static void MX_USART2_UART_Init(void)
 
   /* USER CODE END USART2_Init 1 */
   huart2.Instance = USART2;
-  huart2.Init.BaudRate = 115200;
+  huart2.Init.BaudRate = 921600;
   huart2.Init.WordLength = UART_WORDLENGTH_8B;
   huart2.Init.StopBits = UART_STOPBITS_1;
   huart2.Init.Parity = UART_PARITY_NONE;
