@@ -186,6 +186,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
 
   uint32_t spi_Sent_Cnt = 0;
+
   while (1)
   {
 	  /* Send data via SPI */
